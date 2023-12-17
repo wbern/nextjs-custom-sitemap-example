@@ -1,4 +1,6 @@
+import { NextResponse } from "next/server";
 import { PartialSitemapElement } from "./SitemapXMLPage.types";
+import { ServerResponse, IncomingMessage } from "http";
 
 export const withXMLTemplate = (
   content: string,
@@ -41,22 +43,35 @@ export const buildSitemapXml = (
   return withXMLTemplate(content, "urlset");
 };
 
-export const fetchSitemapData = async (): Promise<PartialSitemapElement[]> => {
-  // replace these hard-coded values with the data you intend to fetch from your CMS (Content Management System)
-  const result = [
-    {
-      slug: "page1",
-      _updatedAtValues: ["2021-09-01T00:00:00.000Z"],
-    },
-    {
-      slug: "page2",
-      _updatedAtValues: [new Date().toISOString()],
-    },
-  ];
+export const fetchSitemapData = (): PartialSitemapElement[] => [
+  {
+    // links to our second sitemap in the next.js project
+    loc: `https://kendev.se/sitemap/nextjs_sitemap.xml`,
+    priority: 0.9,
+    changefreq: "always",
+  },
+  {
+    // links to an old sitemap from our previous CMS
+    // which pages are still being served
+    loc: `https://kendev.se/sitemap/old_cms_sitemap.xml`,
+    priority: 0.6,
+    changefreq: "weekly",
+  },
+];
 
-  return result.map((element) => ({
-    loc: `https://kendev.se/tag/${element.slug}`,
-    lastmod: element._updatedAtValues.sort().pop() ?? new Date().toISOString(),
-    changefreq: "daily",
-  }));
+export const sendResponse = (
+  res: ServerResponse<IncomingMessage>,
+  content: string,
+  draftMode?: boolean
+) => {
+  if (draftMode) {
+    res.setHeader("Cache-Control", "no-store");
+  } else {
+    res.setHeader("Cache-Control", `max-age=${60 * 5}, stale-while-revalidate`);
+  }
+
+  res.setHeader("Content-Type", "application/xml");
+  res.write(content);
+
+  res.end();
 };
